@@ -1,114 +1,143 @@
-<<<<<<< HEAD
 # Low-Latency Monte Carlo Option Pricer
 
-This project demonstrates the progressive optimization of a C++ Monte Carlo simulation for pricing a European call option. The goal is to show a "layers of optimization" approach, moving from a naive single-threaded baseline to a fully parallelized and vectorized (SIMD) implementation.
+This project demonstrates the progressive optimization of a C++17 Monte Carlo simulation for pricing European call options. It follows a layered optimization approach, progressing from a single-threaded baseline to a multithreaded and SIMD-vectorized implementation optimized for x86-64 CPUs.
 
-Preformance critical implementation acheiving upto 28x effiecny using sleef and 16x normally.
+The implementation explores thread-level parallelism, AVX2 SIMD vectorization, vectorized mathematical functions using SLEEF, and an xoshiro128+ pseudorandom number generator.
 
----
+## Core Concepts Demonstrated
 
-##  Core Concepts Demonstrated
+- **Modern C++:** C++17, memory management, and performance-oriented programming.
+- **Financial Modeling:** European call option pricing using Monte Carlo simulation and the Black–Scholes framework.
+- **Concurrency:** Parallel execution using `std::thread` and independent workload partitioning.
+- **CPU Optimization (SIMD):** AVX2 vectorization and FMA instructions for parallel floating-point operations.
+- **Vectorized Mathematics:** SLEEF for vectorized mathematical functions.
+- **Random Number Generation:** xoshiro128+ for fast pseudorandom number generation.
+- **Performance Engineering:** Benchmarking and comparing progressively optimized implementations.
 
-* **C++ Programming:** Clean, modern C++ (`std::c++17`).
-* **Financial Modeling:** Implementation of the Black-Scholes model via Monte Carlo simulation.
-* **Concurrency:** Parallelizing work across multiple CPU cores using `std::thread`.
-* **CPU-Level Optimization (SIMD):** Using instruction-level parallelism to perform calculations on multiple data points at once.
-* **ARM NEON Intrinsics:** Writing low-level CPU-specific code for an Apple M4 processor (ARMv9 architecture).
+## Hardware and Software
 
----
+- **CPU:** Intel Core i5-12500H (12th Gen)
+- **Architecture:** x86-64
+- **Operating System:** Linux
+- **SIMD Instruction Set:** AVX2 (256-bit vectors)
+- **Compiler:** GCC or Clang
+- **Language Standard:** C++17
+- **Math Library:** SLEEF
+- **Parallelism:** C++ threads
 
-##  Project Structure
+## Project Structure
 
-The project is broken into three distinct stages of optimization:
+The project is organized into progressively optimized implementations.
 
-* **`/base`**:
-    * `pricer.cpp`: The naive, single-threaded baseline implementation. It uses 64-bit `double`s and a simple `for` loop.
-* **`/threaded`**:
-    * `pricer_threaded.cpp`: The first optimization. This version divides the simulation work among all available CPU cores using `std::thread`. It still uses 64-bit `double`s.
-* **`/SIMD`**:
-    * `pricer_neon.cpp`: This version uses both multi-threading *and* ARM NEON SIMD intrinsics. To maximize SIMD throughput, the calculations are switched from 64-bit `double`s to 32-bit `float`s, allowing 4 paths to be processed per instruction instead of 2.
-    * `pricer_neon_fully_vectorized.cpp`: This version uses sleef library and xoshiro128+ generator.
----
+- **`base/`**
+  - `pricer.cpp`: Single-threaded baseline using scalar calculations and a straightforward simulation loop.
+
+- **`threaded/`**
+  - `pricer_threaded.cpp`: Distributes Monte Carlo paths among multiple threads while retaining scalar calculations.
+
+- **`SIMD/`**
+  - `pricer_avx2.cpp`: Uses AVX2 intrinsics and multithreading to process multiple simulation paths per vector operation.
+  - `pricer_avx2_fully_vectorized.cpp`: Combines multithreading, SLEEF vector math, and the xoshiro128+ random number generator.
+
+*Note: Adjust the filenames in the commands below to match the source files in your repository.*
 
 ## How to Build and Run
 
-All versions should be compiled with full optimizations (`-O3`) to ensure a fair performance comparison.
+The following commands target an Intel/AMD x86-64 Linux system. The AVX2 implementations require a CPU that supports AVX2.
 
-### 1. Baseline (Single-Thread)
+### 1. Baseline: Single-threaded
 
 ```bash
-# Navigate to the base directory
 cd base
-
-# Compile with optimizations
-# (Note: g++-15 was used in the test, your compiler name may vary)
-g++ -O3 -std=c++17 -g pricer.cpp -o pricer
-
-# Run the benchmark
+g++ -O3 -std=c++17 pricer.cpp -o pricer
 ./pricer
 ```
 
-###2. Multi-Threaded
+### 2. Multithreaded
 
 ```bash
-# Navigate to the threaded directory
 cd threaded
-
-# Compile with optimizations
-g++ -O3 -std=c++17 -g pricer_threaded.cpp -o pricer_threaded
-
-# Run the benchmark
+g++ -O3 -std=c++17 -pthread \
+    pricer_threaded.cpp -o pricer_threaded
 ./pricer_threaded
 ```
 
-###3. Multi-Threaded + NEON (SIMD)
-```bash
-# Navigate to the SIMD directory
-cd SIMD
-
-# Compile with optimizations
-g++ -O3 -std=c++17 -g pricer_neon.cpp -o pricer_neon
-
-# Run the benchmark
-./pricer_neon
-```
-
-###4. Multi-Threaded + NEON + sleef (SIMD)
+### 3. Multithreaded + AVX2 SIMD
 
 ```bash
 cd SIMD
-# please make sure here you have the right flags set
-g++-15 -Ofast -march=armv8.4-a+simd -mcpu=apple-m3 -flto -funroll-loops \
-  -std=c++17 -pipe -fomit-frame-pointer \
-  pricer_neon_fully_vectorized.cpp -I/opt/homebrew/include -L/opt/homebrew/lib -lsleef -lm -o pricer
-./pricer_neon_fully_vectorized
-
+g++ -O3 -mavx2 -mfma -std=c++17 -pthread \
+    pricer_avx2.cpp -o pricer_avx2
+./pricer_avx2
 ```
+
+### 4. Multithreaded + AVX2 + SLEEF
+
+Install SLEEF using your Linux distribution's package manager or build it from source. Adjust the include and library paths if it is installed in a nonstandard location.
+
+```bash
+cd SIMD
+g++ -O3 -mavx2 -mfma -std=c++17 -pthread \
+    pricer_avx2_fully_vectorized.cpp \
+    -lsleef -lm -o pricer_avx2_sleef
+./pricer_avx2_sleef
+```
+
+The final command assumes that the source uses a compatible SLEEF vector API and that the library is installed in a discoverable location. Depending on the installation, additional include paths, library paths, or linker flags may be required.
 
 ## Performance Results
 
-These benchmarks were run on a **MacBook Pro (Apple M4, 14 Cores)**, comparing the time to complete **10,000,000 simulations**.
+The benchmark evaluates the performance of the Monte Carlo option pricer across progressively optimized implementations on an Intel Core i5-12500H system.
 
-| Version | Time Elapsed (s) | Speedup (vs. Baseline) |
-| :--- | :--- | :--- |
-| **1. Baseline (Single-Thread, `double`)** | `0.205796 s` | `1.00x` |
-| **2. Multi-Threaded (14 Cores, `double`)** | `~0.03056 s` | `~6.73x` |
-| **3. Threaded + NEON (14 Cores, `float`)** | `0.012407 s` | **`16.60x`** |
-| **4. Threaded + sleef + NEON (14 Cores, `float`)** | `0.00719 s` | **`28.60x`** |
+The workload consists of 10,000,000 Monte Carlo simulation paths.
 
-> **Note:** The 'Multi-Threaded' time is an estimate. The original test was run with 1M simulations (`0.003056s`) and the result was scaled by 10 to provide a fair comparison against the 10M-simulation benchmarks.
+| Implementation | Runtime | Speedup vs. Baseline |
+|---|---:|---:|
+| Single-threaded baseline (`double`) | 0.205796 s | 1.00x |
+| Multithreaded (`double`) | ~0.03056 s | ~6.73x |
+| Multithreaded + AVX2 (`float`) | 0.012407 s | 16.60x |
+| Multithreaded + SLEEF + AVX2 (`float`) | 0.00719 s | 28.60x |
 
----
+Speedup is calculated by dividing the baseline runtime by the optimized runtime.
 
-## Analysis of Speedup
+For a fair comparison, all implementations should use the same number of simulation paths, equivalent pricing parameters, and consistent benchmarking conditions.
 
-* **Step 1 (Multi-Threading):** The **~6.7x speedup** comes from leveraging **thread-level parallelism**. The work is divided among 14 CPU cores, allowing them to run in parallel. The speedup is not a perfect 14x due to thread creation/management overhead and other system factors.
+## Optimization Analysis
 
-* **Step 2 (SIMD + Data Type):** The final leap to a **16.60x total speedup** (an additional ~2.5x over the threaded version) comes from two related optimizations:
-    1.  **Data Type:** By switching from 64-bit `double`s to 32-bit `float`s, we halve the memory footprint for the calculations. This allows the 128-bit NEON registers to pack 4 values at once (`float32x4_t`) instead of just 2 (`float64x2_t`).
-    2.  **Instruction-Level Parallelism:** Using NEON intrinsics (like `vld1q_f32`, `vsubq_f32`, `vmaxq_f32`, and `vaddvq_f32`) allows each thread to perform a single operation (like `max(0, payoff)`) on 4 separate simulation paths *at the same time*.
+### Step 1: Multithreading
 
-This project successfully demonstrates a 28.6x performance improvement by applying both concurrency and CPU-specific vectorization.
-=======
-# Low-Latency-Monte-Carlo-Option-Pricer-Using-SIMD-and-Multi-Threading-
->>>>>>> 5c5f034b1a55177357997dfba170a4b64ecd6d51
+The simulation workload is divided among independent threads. Each thread processes its assigned Monte Carlo paths and accumulates a local payoff sum. Local accumulation minimizes contention on shared data and reduces synchronization overhead.
+
+### Step 2: AVX2 SIMD Vectorization
+
+AVX2 provides 256-bit vector registers. A single vector can hold eight 32-bit floating-point values or four 64-bit floating-point values.
+
+This allows multiple simulation paths to perform arithmetic operations simultaneously, increasing computational throughput.
+
+### Step 3: Vectorized Mathematical Functions
+
+SLEEF provides vectorized implementations of mathematical functions used in the simulation, potentially reducing the cost of operations such as exponential and logarithmic calculations.
+
+Using vector math alongside AVX2 can improve performance in computationally intensive parts of the pricing pipeline.
+
+### Step 4: Efficient Random Number Generation
+
+The xoshiro128+ pseudorandom number generator provides a lightweight alternative to more expensive general-purpose random-number generation approaches.
+
+Maintaining independent generator state per thread avoids shared-state synchronization and supports parallel execution.
+
+## Correctness and Benchmarking
+
+- Validate the estimated option price against the Black–Scholes analytical price.
+- Ensure random-number generation is independent across threads and does not introduce data races.
+- Compare numerical accuracy when switching from `double` to `float`.
+- Warm up each implementation and perform repeated timing runs.
+- Use consistent simulation parameters and workload sizes.
+- Record compiler versions, optimization flags, thread counts, and hardware details.
+- Compare performance against the single-threaded baseline.
+
+## Conclusion
+
+This project demonstrates how thread-level parallelism, AVX2 SIMD vectorization, efficient random-number generation, and vectorized mathematical functions can be combined to accelerate Monte Carlo option pricing.
+
+By progressively optimizing the computational pipeline, the project explores key techniques used in high-performance C++ programming and low-latency numerical computing.
