@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Low-Latency Monte Carlo Option Pricer
 
 This project demonstrates the progressive optimization of a C++ Monte Carlo simulation for pricing a European call option. The goal is to show a "layers of optimization" approach, moving from a naive single-threaded baseline to a fully parallelized and vectorized (SIMD) implementation.
@@ -108,3 +109,6 @@ These benchmarks were run on a **MacBook Pro (Apple M4, 14 Cores)**, comparing t
     2.  **Instruction-Level Parallelism:** Using NEON intrinsics (like `vld1q_f32`, `vsubq_f32`, `vmaxq_f32`, and `vaddvq_f32`) allows each thread to perform a single operation (like `max(0, payoff)`) on 4 separate simulation paths *at the same time*.
 
 This project successfully demonstrates a 28.6x performance improvement by applying both concurrency and CPU-specific vectorization.
+=======
+# Low-Latency-Monte-Carlo-Option-Pricer-Using-SIMD-and-Multi-Threading-
+>>>>>>> 5c5f034b1a55177357997dfba170a4b64ecd6d51
